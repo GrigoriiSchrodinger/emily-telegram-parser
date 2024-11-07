@@ -1,15 +1,16 @@
+import json
 import re
 import time
 from datetime import datetime
 from typing import Any
 
-from src.Request.schemas import (
+from src.request.schemas import (
     NewsExistsResponseModel,
     NewsExistsRequestModel,
     NewPostRequestModel,
     NewPostResponseModel
 )
-from src.conf import api
+from src.conf import api, redis
 from src.feature.TelegramParser import TelegramLastNews
 
 
@@ -29,7 +30,7 @@ def create_news(channel: str, id_post: int, timestamp: datetime, url: str) -> No
 
 
 def get_telegram_news():
-    channels = ["netstalkers", "omanko"]
+    channels = ["netstalkers", "omanko", "exploitex", "nogirlshere"]
     parser = TelegramLastNews()
     for channel in channels:
         last_news = parser.get(channel)
@@ -38,6 +39,8 @@ def get_telegram_news():
             if channel_name and post_id:
                 if not get_news(channel=channel_name, id_post=int(post_id)).exists:
                     create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
+                    json_news = {"channel": channel_name, "content": news["content"]}
+                    redis.send_to_queue(json.dumps(json_news))
 
 
 if __name__ == '__main__':
