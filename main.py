@@ -1,41 +1,43 @@
 import re
 import time
 from datetime import datetime
+from typing import Any
 
-from src.Request.schemas import NewsExistsResponseModel, NewsExistsRequestModel, NewPostRequestModel, \
+from src.Request.schemas import (
+    NewsExistsResponseModel,
+    NewsExistsRequestModel,
+    NewPostRequestModel,
     NewPostResponseModel
+)
 from src.conf import api
 from src.feature.TelegramParser import TelegramLastNews
 
 
-def extract_channel_and_post_id(url):
+def extract_channel_and_post_id(url: str) -> tuple[str | Any, ...] | tuple[None, None]:
     match = re.search(r'https://t\.me/s/([^/]+)/(\d+)', url)
-    if match:
-        channel_name = match.group(1)
-        post_id = match.group(2)
-        return channel_name, post_id
-    return None, None
+    return match.groups() if match else (None, None)
 
 
-def get_news(channel=str, id_post=int) -> NewsExistsResponseModel:
+def get_news(channel: str, id_post: int) -> NewsExistsResponseModel:
     params = NewsExistsRequestModel(channel=channel, id_post=id_post)
-    response = api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
-    return response
+    return api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
 
 
-def create_news(channel: str, id_post: int, time: datetime, url: str):
-    data = NewPostRequestModel(channel=channel, id_post=id_post, time=time, url=url)
+def create_news(channel: str, id_post: int, timestamp: datetime, url: str) -> None:
+    data = NewPostRequestModel(channel=channel, id_post=id_post, time=timestamp, url=url)
     api.post("create", data=data, response_model=NewPostResponseModel)
-    return
+
 
 def get_telegram_news():
-    list_channels: list = ["netstalkers", "omanko"]
+    channels = ["netstalkers", "omanko"]
     parser = TelegramLastNews()
-    for channel in list_channels:
+    for channel in channels:
         last_news = parser.get(channel)
-        channel_name, post_id = extract_channel_and_post_id(last_news[0]["url"])
-        if get_news(channel=channel_name, id_post=post_id).exists:
-            create_news(channel=channel_name, id_post=post_id, time=last_news[0]["date"], url=last_news[0]["url"])
+        for news in last_news:
+            channel_name, post_id = extract_channel_and_post_id(news["url"])
+            if channel_name and post_id:
+                if not get_news(channel=channel_name, id_post=int(post_id)).exists:
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
 
 
 if __name__ == '__main__':
