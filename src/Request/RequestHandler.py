@@ -1,4 +1,5 @@
-from typing import Optional
+import os
+from typing import Optional, Dict, List
 
 import requests
 from pydantic import BaseModel, ValidationError
@@ -52,21 +53,33 @@ class RequestHandler:
             print(f"Ошибка валидации данных ответа: {ve}")
             return None
 
-
-    def post(self, endpoint: str, data: Optional[BaseModel] = None, response_model: Optional[BaseModel] = None):
+    def post(
+            self, endpoint: str, data: Optional[BaseModel] = None, media_files: Optional[Dict[str, List[str]]] = None,
+            response_model: Optional[BaseModel] = None
+    ):
         """
-            Выполняет POST-запрос к указанному endpoint.
+        Выполняет POST-запрос к указанному endpoint, включая возможность загрузки файлов.
 
-            :param self:
-            :param response_model:
-            :param endpoint: Путь к ресурсу относительно base_url
-            :param data: Данные для отправки в формате form-encoded (по умолчанию None)
-            :return: Ответ сервера в формате JSON (если есть) или текстовый ответ
-            """
+        :param endpoint: Путь к ресурсу относительно base_url
+        :param data: Данные для отправки в формате form-encoded (по умолчанию None)
+        :param media_files: Словарь с путями к файлам для загрузки, ключами являются категории ('images', 'videos')
+        :param response_model: Модель для валидации данных ответа
+        :return: Ответ сервера в формате JSON (если есть) или текстовый ответ
+        """
         url = f"{self.base_url}/{endpoint}"
+        files = {}
+
+        # Подготовка файлов для отправки
+        if media_files:
+            for file_type, file_list in media_files.items():
+                for file_name in file_list:
+                    file_path = os.path.join("media", file_type[:-1],
+                                             file_name)  # file_type: images -> img, videos -> video
+                    files[file_type] = open(file_path, 'rb')
+
         try:
             data_dict = data.dict() if data else None
-            response = requests.post(url, headers=self.headers, json=data_dict, timeout=self.timeout)
+            response = requests.post(url, headers=self.headers, data=data_dict, files=files, timeout=self.timeout)
             response.raise_for_status()
 
             data = response.json() if response.headers.get('Content-Type') == 'application/json' else response.text
@@ -77,23 +90,23 @@ class RequestHandler:
         except ValidationError as ve:
             print(f"Ошибка валидации данных ответа: {ve}")
             return None
+        finally:
+            # Закрытие файлов
+            for f in files.values():
+                f.close()
 
+    def set_headers(self, headers):
+        """
+        Устанавливает или обновляет заголовки для запросов.
 
-def set_headers(self, headers):
-    """
-    Устанавливает или обновляет заголовки для запросов.
+        :param headers: Словарь с заголовками
+        """
+        self.headers.update(headers)
 
-    :param self:
-    :param headers: Словарь с заголовками
-    """
-    self.headers.update(headers)
+    def set_timeout(self, timeout):
+        """
+        Устанавливает тайм-аут для запросов.
 
-
-def set_timeout(self, timeout):
-    """
-    Устанавливает тайм-аут для запросов.
-
-    :param self:
-    :param timeout: Тайм-аут в секундах
-    """
-    self.timeout = timeout
+        :param timeout: Тайм-аут в секундах
+        """
+        self.timeout = timeout
