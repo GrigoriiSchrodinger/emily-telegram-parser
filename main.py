@@ -1,18 +1,15 @@
 import asyncio
+import os
 import re
 import time
 from datetime import datetime
-from io import BytesIO
-from typing import Any, Optional, List
-
-import requests
-from fastapi import UploadFile
+from typing import Any
 
 from src.conf import api
 from src.feature.TeleParser import TeleScraperDict
 from src.feature.TelegramParser import TelegramLastNews
 from src.request.schemas import NewsExistsResponseModel, NewsExistsRequestModel, NewPostResponseModel, \
-    NewPostRequestModel
+    NewPostRequestModel, UploadMediaPathParams
 
 
 def extract_channel_and_post_id(url: str) -> tuple[str | Any, ...] | tuple[None, None]:
@@ -25,35 +22,50 @@ def get_news(channel: str, id_post: int) -> NewsExistsResponseModel:
     return api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
 
 
-def create_news(channel: str, id_post: int, timestamp: datetime, url: str, images: Optional[List[UploadFile]] = None, videos: Optional[List[UploadFile] ] = None) -> None:
+def create_news(channel: str, id_post: int, timestamp: datetime, url: str) -> None:
+    data = NewPostRequestModel(channel=channel, id_post=id_post, time=timestamp, url=url)
+    api.post("create", data=data, response_model=NewPostResponseModel)
+
+
+async def upload_media_files(id_post: int, images: list[str], videos: list[str]) -> dict:
     files = []
 
-    # Добавляем изображения и видео к файлам
-    for img in images:
-        files.append(('images', (img.filename, img.file, 'image/jpeg')))
-    for vid in videos:
-        files.append(('videos', (vid.filename, vid.file, 'video/mp4')))
+    try:
+        # Подготовка файлов для отправки
+        for image in images:
+            # Добавляем префикс пути к изображениям
+            image_path = os.path.join('media', 'img', image)
+            if os.path.exists(image_path):
+                files.append(('files', ('image.jpg', open(image_path, 'rb'), 'image/jpeg')))
+            else:
+                print(f"Файл изображения не найден: {image_path}")
 
-    data = {
-        'channel': channel,
-        'id_post': id_post,
-        'time': timestamp.isoformat(),
-        'url': url
-    }
+        for video in videos:
+            # Добавляем префикс пути к видео
+            video_path = os.path.join('media', 'video', video)
+            if os.path.exists(video_path):
+                files.append(('files', ('video.mp4', open(video_path, 'rb'), 'video/mp4')))
+            else:
+                print(f"Видео файл не найден: {video_path}")
 
-    response = requests.post("http://0.0.0.0:8000/news/create", files=files, data=data)
+        if not files:
+            print("Нет файлов для загрузки")
+            return {}
 
-    # Обработка ответа
-    if response.status_code == 200:
-        print("Запрос успешно отправлен!")
-    else:
-        print(f"Ошибка POST-запроса: {response.status_code}, ответ: {response.text}")
-
-def create_upload_file(filename):
-    # Открываем файл и создаем UploadFile
-    with open(filename, "rb") as file:
-        return UploadFile(filename=filename, file=BytesIO(file.read()))
-
+        path_params = UploadMediaPathParams(id_post=id_post)
+        response = api.post_files(
+            endpoint="upload-media/{id_post}",
+            path_params=path_params,
+            files=files
+        )
+        return response
+    finally:
+        # Закрываем все открытые файлы
+        for file_tuple in files:
+            try:
+                file_tuple[1][1].close()
+            except:
+                pass
 
 def get_telegram_news():
     channels = ["netstalkers", "omanko"]
@@ -62,15 +74,17 @@ def get_telegram_news():
         last_news = parser.get(channel)
         for news in last_news:
             channel_name, post_id = extract_channel_and_post_id(news["url"])
+            scraper = TeleScraperDict(news["url"])
+            result = asyncio.run(scraper.get())
             if channel_name and post_id:
                 if not get_news(channel=channel_name, id_post=int(post_id)).exists:
-                    scraper = TeleScraperDict(news["url"])
-                    result = asyncio.run(scraper.get())
-                    print(result)
-                    images = [create_upload_file(f"media/img/{image}") for image in result["images"]]
-                    videos = [create_upload_file(f"media/video/{video}") for video in result["videos"]]
-                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"], images=images, videos=videos)
-
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
+                    if result.get('images') or result.get('videos'):
+                        asyncio.run(upload_media_files(
+                            images=result.get('images', []),
+                            videos=result.get('videos', []),
+                            id_post=post_id
+                        ))
 
 if __name__ == '__main__':
     while True:
