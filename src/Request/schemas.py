@@ -1,8 +1,4 @@
-from typing import  List
-
-from fastapi import UploadFile, File
 from pydantic import BaseModel
-from datetime import datetime
 
 
 class PostBase(BaseModel):
@@ -18,11 +14,11 @@ class NewsExistsResponseModel(BaseModel):
 class NewPostRequestModel(PostBase):
     channel: str
     id_post: int
-    time: datetime
+    time: str
     url: str
-    images: List[UploadFile] = File(None)
-    videos: List[UploadFile] = File(None)
-
 
 class NewPostResponseModel(PostBase):
     pass
+
+class UploadMediaPathParams(BaseModel):
+    id_post: int
