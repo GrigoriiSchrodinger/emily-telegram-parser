@@ -1,9 +1,18 @@
 import asyncio
 import os
+import json
 import re
 import time
+from datetime import datetime
 from typing import Any
 
+from src.request.schemas import (
+    NewsExistsResponseModel,
+    NewsExistsRequestModel,
+    NewPostRequestModel,
+    NewPostResponseModel
+)
+from src.conf import api, redis
 from src.conf import api
 from src.feature.TeleParser import TeleScraperDict
 from src.feature.TelegramParser import TelegramLastNews
@@ -67,7 +76,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
                 pass
 
 def get_telegram_news():
-    channels = ["netstalkers", "omanko"]
+    channels = ["netstalkers", "omanko", "exploitex", "nogirlshere"]
     parser = TelegramLastNews()
     for channel in channels:
         last_news = parser.get(channel)
@@ -85,6 +94,10 @@ def get_telegram_news():
                             id_post=post_id,
                             channel=channel
                         ))
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
+                    json_news = {"channel": channel_name, "content": news["content"]}
+                    redis.send_to_queue(json.dumps(json_news))
+
 
 if __name__ == '__main__':
     while True:
