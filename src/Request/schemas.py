@@ -13,6 +13,7 @@ class NewsExistsResponseModel(BaseModel):
 
 class NewPostRequestModel(PostBase):
     channel: str
+    text: str
     id_post: int
     time: str
     url: str
@@ -22,3 +23,4 @@ class NewPostResponseModel(PostBase):
 
 class UploadMediaPathParams(BaseModel):
     id_post: int
+    channel: str
