@@ -166,9 +166,3 @@ class TeleScraperDict:
             "images": self.image_filenames,
             "videos": self.video_filenames
         }
-
-
-# Пример использования
-# if __name__ == '__main__':
-#     scraper = TeleScraperDict("https://t.me/whackdoor/14699")
-#     result = asyncio.run(scraper.get())

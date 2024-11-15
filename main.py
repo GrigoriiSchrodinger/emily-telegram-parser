@@ -2,7 +2,6 @@ import asyncio
 import os
 import re
 import time
-from datetime import datetime
 from typing import Any
 
 from src.conf import api
@@ -22,12 +21,12 @@ def get_news(channel: str, id_post: int) -> NewsExistsResponseModel:
     return api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
 
 
-def create_news(channel: str, id_post: int, timestamp: datetime, url: str) -> None:
-    data = NewPostRequestModel(channel=channel, id_post=id_post, time=timestamp, url=url)
+def create_news(channel: str, id_post: int, text: str, timestamp: str, url: str) -> None:
+    data = NewPostRequestModel(channel=channel, id_post=id_post, text=text, time=timestamp, url=url)
     api.post("create", data=data, response_model=NewPostResponseModel)
 
 
-async def upload_media_files(id_post: int, images: list[str], videos: list[str]) -> dict:
+async def upload_media_files(id_post: int, channel: str, images: list[str], videos: list[str]) -> dict:
     files = []
 
     try:
@@ -52,9 +51,9 @@ async def upload_media_files(id_post: int, images: list[str], videos: list[str])
             print("Нет файлов для загрузки")
             return {}
 
-        path_params = UploadMediaPathParams(id_post=id_post)
+        path_params = UploadMediaPathParams(id_post=id_post, channel=channel)
         response = api.post_files(
-            endpoint="upload-media/{id_post}",
+            endpoint="upload-media/{id_post}/{channel}",
             path_params=path_params,
             files=files
         )
@@ -74,16 +73,17 @@ def get_telegram_news():
         last_news = parser.get(channel)
         for news in last_news:
             channel_name, post_id = extract_channel_and_post_id(news["url"])
-            scraper = TeleScraperDict(news["url"])
-            result = asyncio.run(scraper.get())
             if channel_name and post_id:
                 if not get_news(channel=channel_name, id_post=int(post_id)).exists:
-                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
+                    scraper = TeleScraperDict(news["url"])
+                    result = asyncio.run(scraper.get())
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"], text=news["content"])
                     if result.get('images') or result.get('videos'):
                         asyncio.run(upload_media_files(
                             images=result.get('images', []),
                             videos=result.get('videos', []),
-                            id_post=post_id
+                            id_post=post_id,
+                            channel=channel
                         ))
 
 if __name__ == '__main__':
