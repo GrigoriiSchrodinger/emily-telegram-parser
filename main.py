@@ -3,17 +3,8 @@ import os
 import json
 import re
 import time
-from datetime import datetime
 from typing import Any
-
-from src.request.schemas import (
-    NewsExistsResponseModel,
-    NewsExistsRequestModel,
-    NewPostRequestModel,
-    NewPostResponseModel
-)
 from src.conf import api, redis
-from src.conf import api
 from src.feature.TeleParser import TeleScraperDict
 from src.feature.TelegramParser import TelegramLastNews
 from src.request.schemas import NewsExistsResponseModel, NewsExistsRequestModel, NewPostResponseModel, \
