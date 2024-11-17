@@ -30,7 +30,6 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
     files = []
 
     try:
-        # Подготовка файлов для отправки
         for image in images:
             # Добавляем префикс пути к изображениям
             image_path = os.path.join('media', 'img', image)
@@ -59,7 +58,6 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
         )
         return response
     finally:
-        # Закрываем все открытые файлы
         for file_tuple in files:
             try:
                 file_tuple[1][1].close()
@@ -74,10 +72,11 @@ def get_telegram_news():
         for news in last_news:
             channel_name, post_id = extract_channel_and_post_id(news["url"])
             if channel_name and post_id:
-                if not get_news(channel=channel_name, id_post=int(post_id)).exists:
+                print(news)
+                if not get_news(channel=channel_name, id_post=int(post_id)).exists and news.get("content"):
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news.get("date"), url=news["url"], text=news.get("content"))
                     scraper = TeleScraperDict(news["url"])
                     result = asyncio.run(scraper.get())
-                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"], text=news["content"])
                     if result.get('images') or result.get('videos'):
                         asyncio.run(upload_media_files(
                             images=result.get('images', []),
@@ -85,8 +84,7 @@ def get_telegram_news():
                             id_post=post_id,
                             channel=channel
                         ))
-                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news["date"], url=news["url"])
-                    json_news = {"channel": channel_name, "content": news["content"]}
+                    json_news = {"channel": channel_name, "content": news["content"], "id_post": post_id}
                     redis.send_to_queue(json.dumps(json_news))
 
 

@@ -4,10 +4,10 @@ import requests
 import html2text
 import re
 from bs4 import BeautifulSoup
+import time
 
 class TeleScraperDict:
     def __init__(self, post_url):
-        # Инициализация с URL поста и заголовками для запроса
         self.post_url = post_url
         self.headers = {
             'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/77.0.3865.90 Safari/537.36 TelegramBot (like TwitterBot)'
@@ -17,6 +17,9 @@ class TeleScraperDict:
         self.author = ""  # Автор сообщения
         self.content = ""  # Содержимое сообщения
         self.date_time = ""  # Время публикации сообщения
+        self.media_download_delay = 1  # Добавляем задержку в секундах между загрузками
+        self.max_retries = 3  # Максимальное количество попыток скачивания
+        self.retry_delay = 2  # Задержка между попытками в секундах
 
     @staticmethod
     def html_to_text(html):
@@ -70,54 +73,65 @@ class TeleScraperDict:
             print(f"File already exists: {filename}")
             return filename
 
-        # Логируем URL, который будем скачивать
         print(f"Downloading media from {url} to {file_path}")
 
-        try:
-            response = requests.get(url)
-            response.raise_for_status()  # Проверка статуса ответа
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
-            return filename
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to download {url}: {e}")
-            return None
+        for attempt in range(self.max_retries):
+            try:
+                response = requests.get(url, headers=self.headers, timeout=10)
+                response.raise_for_status()
+                
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+                time.sleep(self.media_download_delay)
+                return filename
+                
+            except requests.exceptions.RequestException as e:
+                print(f"Attempt {attempt + 1}/{self.max_retries} failed to download {url}: {e}")
+                if attempt < self.max_retries - 1:
+                    print(f"Waiting {self.retry_delay} seconds before retry...")
+                    time.sleep(self.retry_delay)
+                    continue
+                else:
+                    print(f"All attempts to download {url} failed")
+                    return None
 
     def append_image_urls(self, img_elements):
-        base_url = 'https://cdn4.cdn-telegram.org'  # Базовый URL для абсолютных ссылок
+        base_url = 'https://cdn4.cdn-telegram.org'
+        post_id = self.post_url.split('/')[-1]
 
         for idx, div in enumerate(img_elements, start=1):
-            style = div['style']
+            parent_msg = div.find_parent('div', {'class': 'tgme_widget_message'})
+            if parent_msg and parent_msg.get('data-post', '').endswith(post_id):
+                style = div['style']
+                matches = re.findall(r"background-image:url\('(.*?)'\)", style)
 
-            # Ищем все background-image в стиле
-            matches = re.findall(r"background-image:url\('(.*?)'\)", style)
+                if matches:
+                    for match in matches:
+                        if match.startswith('/'):
+                            match = base_url + match
+                        image_url = match
 
-            if matches:
-                for match in matches:
-                    # Если URL относительный, добавляем базовый URL
-                    if match.startswith('/'):
-                        match = base_url + match
-                    image_url = match
-
-                    if image_url:
-                        filename = self.save_media(image_url, 'img')
-                        if filename:
-                            self.image_filenames.append(filename)
-                        else:
-                            print(f"Failed to download image: {image_url}")  # Логирование ошибки скачивания
+                        if image_url:
+                            filename = self.save_media(image_url, 'img')
+                            if filename:
+                                self.image_filenames.append(filename)
+                            else:
+                                print(f"Failed to download image: {image_url}")
 
     def append_video_urls(self, video_elements, post_id, date_time):
         """
         Извлекает и сохраняет все видео из HTML-элементов.
         """
         for idx, video in enumerate(video_elements, start=1):
-            video_tag = video.find('video')  # Извлекаем URL через тег <video>
-            if video_tag:
-                src = video_tag.get('src')
-                if src:
-                    filename = self.save_media(src, 'vid')
-                    if filename:
-                        self.video_filenames.append(filename)
+            parent_msg = video.find_parent('div', {'class': 'tgme_widget_message'})
+            if parent_msg and parent_msg.get('data-post', '').endswith(post_id):
+                video_tag = video.find('video')
+                if video_tag:
+                    src = video_tag.get('src')
+                    if src:
+                        filename = self.save_media(src, 'vid')
+                        if filename:
+                            self.video_filenames.append(filename)
 
     async def fetch_data(self):
         """
@@ -125,7 +139,7 @@ class TeleScraperDict:
         """
         url = self.post_url + '?embed=1&mode=tme'
         try:
-            # Запрос и парсинг HTML с использованием BeautifulSoup
+            # Запрос и парсинг HTML
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             link_html = BeautifulSoup(response.text, 'html.parser')
