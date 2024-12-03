@@ -72,8 +72,6 @@ def get_telegram_news():
         for news in last_news:
             channel_name, post_id = extract_channel_and_post_id(news["url"])
             if channel_name and post_id:
-                print(news)
-                print(get_news(channel=channel_name, id_post=int(post_id)))
                 if not get_news(channel=channel_name, id_post=int(post_id)).exists and news.get("content"):
                     create_news(channel=channel_name, id_post=int(post_id), timestamp=news.get("date"), url=news["url"], text=news.get("content"))
                     scraper = TeleScraperDict(news["url"])
