@@ -17,6 +17,7 @@ class NewPostRequestModel(PostBase):
     id_post: int
     time: str
     url: str
+    outlinks: list
 
 class NewPostResponseModel(PostBase):
     pass

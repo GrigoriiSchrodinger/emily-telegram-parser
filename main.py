@@ -21,8 +21,8 @@ def get_news(channel: str, id_post: int) -> NewsExistsResponseModel:
     return api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
 
 
-def create_news(channel: str, id_post: int, text: str, timestamp: str, url: str) -> None:
-    data = NewPostRequestModel(channel=channel, id_post=id_post, text=text, time=timestamp, url=url)
+def create_news(channel: str, id_post: int, text: str, timestamp: str, url: str, outlinks: list) -> None:
+    data = NewPostRequestModel(channel=channel, id_post=id_post, text=text, time=timestamp, url=url, outlinks=outlinks)
     api.post("create", data=data, response_model=NewPostResponseModel)
 
 
@@ -73,7 +73,7 @@ def get_telegram_news():
             channel_name, post_id = extract_channel_and_post_id(news["url"])
             if channel_name and post_id:
                 if not get_news(channel=channel_name, id_post=int(post_id)).exists and news.get("content"):
-                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news.get("date"), url=news["url"], text=news.get("content"))
+                    create_news(channel=channel_name, id_post=int(post_id), timestamp=news.get("date"), url=news["url"], text=news.get("content"), outlinks=news.get("outlinks"))
                     scraper = TeleScraperDict(news["url"])
                     result = asyncio.run(scraper.get())
                     if result.get('images') or result.get('videos'):
@@ -81,13 +81,13 @@ def get_telegram_news():
                             images=result.get('images', []),
                             videos=result.get('videos', []),
                             id_post=post_id,
-                            channel=channel
+                            channel=channel,
                         ))
-                    json_news = {"channel": channel_name, "content": news["content"], "id_post": post_id}
+                    json_news = {"channel": channel_name, "content": news["content"], "id_post": post_id, "outlinks": news["outlinks"] }
                     redis.send_to_queue(json.dumps(json_news))
 
 
 if __name__ == '__main__':
     while True:
         get_telegram_news()
-        time.sleep(360)
+        time.sleep(600)
