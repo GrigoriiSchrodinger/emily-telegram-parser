@@ -65,7 +65,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
                 pass
 
 def get_telegram_news():
-    channels = ["netstalkers", "omanko", "exploitex", "nogirlshere", "readovkanews", "bazabazon", "moscowmap", "russianonwars"]
+    channels = ["netstalkers", "omanko", "exploitex", "nogirlshere", "moscowmap", "russianonwars"]
     parser = TelegramLastNews()
     for channel in channels:
         last_news = parser.get(channel)
