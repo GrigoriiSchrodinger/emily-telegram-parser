@@ -18,12 +18,12 @@ def extract_channel_and_post_id(url: str) -> tuple[str | Any, ...] | tuple[None,
 
 def get_news(channel: str, id_post: int) -> NewsExistsResponseModel:
     params = NewsExistsRequestModel(channel=channel, id_post=id_post)
-    return api.get("exists/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
+    return api.get("all-news/exists-news/{channel}/{id_post}", path_params=params, response_model=NewsExistsResponseModel)
 
 
 def create_news(channel: str, id_post: int, text: str, timestamp: str, url: str, outlinks: list) -> None:
     data = NewPostRequestModel(channel=channel, id_post=id_post, text=text, time=timestamp, url=url, outlinks=outlinks)
-    api.post("create", data=data, response_model=NewPostResponseModel)
+    api.post("all-news/create", data=data, response_model=NewPostResponseModel)
 
 
 async def upload_media_files(id_post: int, channel: str, images: list[str], videos: list[str]) -> dict:
@@ -52,7 +52,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
 
         path_params = UploadMediaPathParams(id_post=id_post, channel=channel)
         response = api.post_files(
-            endpoint="upload-media/{id_post}/{channel}",
+            endpoint="media/upload/{id_post}/{channel}",
             path_params=path_params,
             files=files
         )
@@ -65,7 +65,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
                 pass
 
 def get_telegram_news():
-    channels = ["netstalkers", "omanko", "exploitex", "nogirlshere", "moscowmap", "russianonwars"]
+    channels = ["netstalkers", "omanko", "exploitex", "moscowmap", "whackdoor", "moscowachplus", "Putin_tramp_mobilizaciya_migrant"]
     parser = TelegramLastNews()
     for channel in channels:
         last_news = parser.get(channel)
