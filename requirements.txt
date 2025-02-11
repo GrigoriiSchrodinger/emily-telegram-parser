@@ -1,6 +1,4 @@
-requests~=2.32.3
-pydantic~=2.9.2
-html2text~=2024.2.26
-beautifulsoup4~=4.12.3
-fastapi~=0.115.4
-redis~=5.2.0
+beautifulsoup4==4.13.3
+html2text==2024.2.26
+pydantic==2.10.6
+Requests==2.32.3
