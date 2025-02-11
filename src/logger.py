@@ -57,6 +57,12 @@ class LokiHandler(logging.Handler):
 logger = logging.getLogger("TelegramParser")
 logger.setLevel(logging.DEBUG)
 
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter(
+    "%(asctime)s - %(levelname)s - %(module)s.%(funcName)s - %(message)s"
+))
+logger.addHandler(console_handler)
+
 loki_handler = LokiHandler(
     url="http://localhost:3100/loki/api/v1/push",
     tags={"project": "TelegramParser"},

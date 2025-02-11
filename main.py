@@ -11,6 +11,23 @@ from src.request.schemas import NewsExistsResponseModel, NewsExistsRequestModel,
     NewPostRequestModel, UploadMediaPathParams
 from src.logger import logger
 
+def filter_outlinks_in_news_list(news_list: list[dict]) -> list[dict]:
+    """
+    Фильтрует t.me-ссылки в outlinks для всего списка новостей.
+    Возвращает новый список новостей с очищенными ссылками.
+    Сохраняет исходные данные неизменными.
+    """
+    filtered_news = []
+    for news in news_list:
+        if 'outlinks' in news and isinstance(news['outlinks'], list):
+            # Фильтруем ссылки, удаляя содержащие https://t.me/
+            filtered_links = [link for link in news['outlinks'] if 'https://t.me/' not in link]
+            # Создаем копию новости с обновленными ссылками
+            filtered_news.append({**news, 'outlinks': filtered_links})
+        else:
+            # Если нет outlinks - оставляем как есть
+            filtered_news.append(news)
+    return filtered_news
 
 def extract_channel_and_post_id(url: str) -> tuple[str | Any, ...] | tuple[None, None]:
     match = re.search(r'https://t\.me/s/([^/]+)/(\d+)', url)
@@ -43,11 +60,10 @@ def create_news(channel: str, id_post: int, text: str, timestamp: str, url: str,
             "post_id": id_post,
             "data_length": len(text)
         }})
-        response = api.post("all-news/create", data=data, response_model=NewPostResponseModel)
+        api.post("all-news/create", data=data, response_model=NewPostResponseModel)
         logger.info("Новость успешно создана", extra={"tags": {
             "channel": channel,
             "post_id": id_post,
-            "response_id": response.id
         }})
     except Exception as e:
         logger.error("Ошибка создания новости", extra={"tags": {
@@ -127,7 +143,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
 def get_telegram_news():
     try:
         logger.info("Запуск цикла сбора новостей")
-        channels = ["netstalkers", "omanko", "exploitex", "moscowmap", "whackdoor", "moscowachplus", "Putin_tramp_mobilizaciya_migrant"]
+        channels = ["netstalkers", "omanko", "exploitex", "moscowmap", "whackdoor", "moscowachplus", "Putin_tramp_mobilizaciya_migrant", "novosti_efir", "Ateobreaking"]
         parser = TelegramLastNews()
         
         logger.info("Начало сбора новостей", extra={"tags": {"process": "news_collection"}})
@@ -136,9 +152,10 @@ def get_telegram_news():
             logger.info(f"Обработка канала: {channel}", extra={"tags": {"channel": channel}})
             
             try:
-                last_news = parser.get(channel)
+                last_news = filter_outlinks_in_news_list(parser.get(channel))
                 logger.debug(f"Получено {len(last_news)} новостей", extra={"tags": {"channel": channel}})
-                
+                logger.debug(f"Список новостей", extra={"tags": {"list_news": last_news}})
+
                 for news in last_news:
                     channel_name, post_id = extract_channel_and_post_id(news["url"])
                     logger.debug(f"Обработка новости: {news['url']}", extra={"tags": {
