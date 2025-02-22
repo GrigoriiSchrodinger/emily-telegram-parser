@@ -39,8 +39,8 @@ jobs:
           docker network inspect app >/dev/null 2>&1 || docker network create app
           
           # Если есть старый контейнер, останавливаем и удаляем его
-          docker stop ${{ github.event.repository.name }}-container || true
-          docker rm ${{ github.event.repository.name }}-container || true
+          docker stop ${{ github.event.repository.name }} || true
+          docker rm ${{ github.event.repository.name }} || true
           
           # Запускаем новый контейнер с подключенным volume и сетью
           docker run -d \
