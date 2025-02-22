@@ -1,0 +1,48 @@
+name: Deploy to Remote Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      run: docker build -t ${{ github.event.repository.name }}:latest .
+
+    - name: Set up SSH
+      uses: webfactory/ssh-agent@v0.8.0
+      with:
+        ssh-private-key: ${{ secrets.REMOTE_SSH_KEY }}
+
+    - name: Transfer Docker image to remote server
+      run: |
+        docker save ${{ github.event.repository.name }}:latest | bzip2 | ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} 'bunzip2 | docker load'
+
+    - name: Deploy on remote server
+      run: |
+        ssh -o StrictHostKeyChecking=no ${{ secrets.REMOTE_USER }}@${{ secrets.REMOTE_HOST }} << 'EOF'
+          # Создаем volume если его еще нет
+          docker volume create ${{ github.event.repository.name }}_data || true
+          
+          # Если есть старый контейнер, останавливаем и удаляем его
+          docker stop ${{ github.event.repository.name }}-container || true
+          docker rm ${{ github.event.repository.name }}-container || true
+          
+          # Запускаем новый контейнер с подключенным volume и сетью
+          docker run -d \
+            --name ${{ github.event.repository.name }} \
+            -v ${{ github.event.repository.name }}_data:/app/data \
+            --network app \
+            ${{ github.event.repository.name }}:latest
+        EOF
