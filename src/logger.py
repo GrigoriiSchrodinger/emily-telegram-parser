@@ -64,7 +64,7 @@ console_handler.setFormatter(logging.Formatter(
 logger.addHandler(console_handler)
 
 loki_handler = LokiHandler(
-    url="http://localhost:3100/loki/api/v1/push",
+    url="http://loki:3100/loki/api/v1/push",
     tags={"project": "TelegramParser"},
 )
 logger.addHandler(loki_handler)
