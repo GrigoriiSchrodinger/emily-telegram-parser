@@ -55,3 +55,7 @@ def get_url_redis() -> str:
 def get_url_loki() -> str:
     """Возвращает URL для сервиса loki."""
     return get_service_url("loki") or SERVICE_URLS[Environment.LOCALHOST]["loki"]
+
+print(get_url_emily_database_handler())
+print(get_url_redis())
+print(get_url_loki())
