@@ -46,9 +46,9 @@ jobs:
           mkdir -p /home/${{ secrets.REMOTE_USER }}/docker-configs/${{ github.event.repository.name }}
           
           # Создаем .env файл на сервере с секретами из GitHub Actions
-          cat > /home/${{ secrets.REMOTE_USER }}/docker-configs/${{ github.event.repository.name }}/.env << EOL
-          ENV=production
-          EOL
+        cat > /home/${{ secrets.REMOTE_USER }}/docker-configs/${{ github.event.repository.name }}/.env << EOL
+        ENV=production
+        EOL
         
           # Запускаем новый контейнер с подключенным volume и сетью
           docker run -d \
