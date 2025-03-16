@@ -53,6 +53,7 @@ jobs:
           # Запускаем новый контейнер с подключенным volume и сетью
           docker run -d \
             --name ${{ github.event.repository.name }} \
+            --env-file /home/${{ secrets.REMOTE_USER }}/docker-configs/${{ github.event.repository.name }}/.env \
             -v ${{ github.event.repository.name }}_data:/app/data \
             --network app \
             ${{ github.event.repository.name }}:latest
