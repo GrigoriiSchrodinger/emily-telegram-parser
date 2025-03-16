@@ -3,6 +3,7 @@ import logging
 
 import requests
 
+from src.service_url import get_url_loki
 
 
 class LokiHandler(logging.Handler):
@@ -64,7 +65,7 @@ console_handler.setFormatter(logging.Formatter(
 logger.addHandler(console_handler)
 
 loki_handler = LokiHandler(
-    url="http://loki:3100/loki/api/v1/push",
+    url=f"{get_url_loki()}/loki/api/v1/push",
     tags={"project": "TelegramParser"},
 )
 logger.addHandler(loki_handler)

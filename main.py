@@ -4,12 +4,13 @@ import json
 import re
 import time
 from typing import Any
-from src.conf import api, redis
 from src.feature.TeleParser import TeleScraperDict
 from src.feature.TelegramParser import TelegramLastNews
 from src.request.schemas import NewsExistsResponseModel, NewsExistsRequestModel, NewPostResponseModel, \
     NewPostRequestModel, UploadMediaPathParams
 from src.logger import logger
+from src.service import redis, api
+
 
 def filter_outlinks_in_news_list(news_list: list[dict]) -> list[dict]:
     """

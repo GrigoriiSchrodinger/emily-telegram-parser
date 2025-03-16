@@ -1,5 +1,7 @@
-from src.redis.RedisManager import RedisQueue
-from src.request.RequestHandler import RequestHandler
+import os
 
-api = RequestHandler(base_url="http://emily-database-handler:8000")
-redis = RedisQueue(queue_name="filter", host="redis", port=6379, db=0)
+from dotenv import load_dotenv
+
+load_dotenv()
+
+ENV = os.getenv('ENV', "localhost")

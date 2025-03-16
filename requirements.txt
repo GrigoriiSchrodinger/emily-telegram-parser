@@ -4,3 +4,4 @@ pydantic~=2.9.2
 Requests==2.32.3
 redis~=5.2.0
 snscrape
+python-dotenv~=1.0.1
