@@ -181,8 +181,7 @@ def get_telegram_news():
                             
                             create_news(channel=channel_name, id_post=int(post_id), timestamp=news.get("date"), 
                                       url=news["url"], text=news.get("content"), outlinks=news.get("outlinks"))
-                            
-                            # Логируем процесс получения медиа
+
                             logger.debug("Получение медиа-контента", extra={"tags": {
                                 "channel": channel_name,
                                 "post_id": post_id,
