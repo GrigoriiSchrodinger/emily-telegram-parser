@@ -144,7 +144,7 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
 def get_telegram_news():
     try:
         logger.info("Запуск цикла сбора новостей")
-        channels = ["netstalkers", "omanko", "exploitex", "moscowmap", "whackdoor", "moscowachplus", "Putin_tramp_mobilizaciya_migrant", "novosti_efir", "Ateobreaking"]
+        channels = ["exploitex", "moscowmap", "whackdoor", "moscowachplus", "novosti_efir", "moscow", "chp_sochi"]
         parser = TelegramLastNews()
         
         logger.info("Начало сбора новостей", extra={"tags": {"process": "news_collection"}})
