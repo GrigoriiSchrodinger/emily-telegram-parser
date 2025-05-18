@@ -5,3 +5,5 @@ Requests==2.32.3
 redis~=5.2.0
 snscrape
 python-dotenv~=1.0.1
+feedparser~=6.0.11
+newspaper3k~=0.2.8

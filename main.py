@@ -4,8 +4,10 @@ import json
 import re
 import time
 from typing import Any
+from datetime import datetime
 from src.feature.TeleParser import TeleScraperDict
 from src.feature.TelegramParser import TelegramLastNews
+from src.feature.newspaper_parser import NewsParser
 from src.request.schemas import NewsExistsResponseModel, NewsExistsRequestModel, NewPostResponseModel, \
     NewPostRequestModel, UploadMediaPathParams
 from src.logger import logger
@@ -138,7 +140,8 @@ async def upload_media_files(id_post: int, channel: str, images: list[str], vide
         for file_tuple in files:
             try:
                 file_tuple[1][1].close()
-            except:
+            except Exception as error:
+                logger.error(error)
                 pass
 
 def get_telegram_news():
@@ -199,7 +202,7 @@ def get_telegram_news():
                                               "media_operation": "upload"
                                           }})
                                 
-                                upload_result = asyncio.run(upload_media_files(
+                                asyncio.run(upload_media_files(
                                     images=result.get('images', []),
                                     videos=result.get('videos', []),
                                     id_post=post_id,
@@ -238,9 +241,55 @@ def get_telegram_news():
         logger.critical("Критическая ошибка в основном цикле", exc_info=True, extra={"tags": {
             "error_type": type(e).__name__
         }})
+def pars_site_news():
+    articles = NewsParser().get_latest_articles()
+    for article in articles:
+        channel = article['source']
+        post_id = article['id']
+        text = article['title'] + article["text"]
 
+        exists_response = get_news(channel=channel, id_post=int(post_id))
+        logger.info(f"Проверка существования новости: {exists_response.exists}", extra={"tags": {
+            "channel": channel,
+            "post_id": post_id
+        }})
+
+        if not exists_response.exists and text:
+            logger.info("Создание новой записи", extra={"tags": {
+                "channel": channel,
+                "post_id": post_id,
+                "operation": "create_news",
+                "parser": "site"
+            }})
+            create_news(
+                channel=channel,
+                id_post=int(post_id),
+                timestamp=datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'),
+                url=article['url'],
+                text=text,
+                outlinks=[]
+            )
+            asyncio.run(upload_media_files(
+                images=article['top_image_local'],
+                videos=[],
+                id_post=int(article['id']),
+                channel=article['source']
+            ))
+            json_news = {
+                "channel": channel,
+                "content": text,
+                "id_post": post_id,
+                "outlinks": []
+            }
+            redis.send_to_queue(json.dumps(json_news))
+            logger.info("Новость добавлена в очередь Redis", extra={"tags": {
+                "channel": channel,
+                "post_id": post_id,
+                "operation": "redis_queue"
+            }})
 
 if __name__ == '__main__':
     while True:
         get_telegram_news()
+        pars_site_news()
         time.sleep(600)
