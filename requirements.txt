@@ -7,3 +7,4 @@ snscrape
 python-dotenv~=1.0.1
 feedparser~=6.0.11
 newspaper3k~=0.2.8
+lxml[html_clean]
